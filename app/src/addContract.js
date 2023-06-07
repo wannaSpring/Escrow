@@ -1,6 +1,7 @@
 import { ethers } from 'ethers';
 
-const provider = new ethers.providers.Web3Provider(ethereum);
+const provider = ((window.ethereum != null) ? new ethers.providers.Web3Provider(window.ethereum) : ethers.providers.getDefaultProvider());
+
 
 export default async function addContract(
   id,

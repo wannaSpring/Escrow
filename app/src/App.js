@@ -1,9 +1,8 @@
 import { ethers } from 'ethers';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import deploy from './deploy';
 import Escrow from './Escrow';
-
-const provider = new ethers.providers.Web3Provider(window.ethereum);
+const provider = ((window.ethereum != null) ? new ethers.providers.Web3Provider(window.ethereum) : ethers.providers.getDefaultProvider());
 
 export async function approve(escrowContract, signer) {
   const approveTxn = await escrowContract.connect(signer).approve();
@@ -18,7 +17,7 @@ function App() {
   useEffect(() => {
     async function getAccounts() {
       const accounts = await provider.send('eth_requestAccounts', []);
-
+      console.log(accounts);
       setAccount(accounts[0]);
       setSigner(provider.getSigner());
     }
@@ -26,18 +25,32 @@ function App() {
     getAccounts();
   }, [account]);
 
+
+  const getEscrows = useCallback(async () => {
+    const escrows = localStorage.getItem('escrows');
+    console.log(escrows);
+    if(escrows){
+      setEscrows(JSON.parse(escrows));
+    }
+  }, [])
+
+
+  useEffect(() => {
+    getEscrows()
+  }, [getEscrows])
+
+
+
   async function newContract() {
     const beneficiary = document.getElementById('beneficiary').value;
     const arbiter = document.getElementById('arbiter').value;
-    const value = ethers.BigNumber.from(document.getElementById('wei').value);
+    const value = ethers.BigNumber.from(ethers.utils.parseUnits(document.getElementById('Ether').value.toString(), 'ether').toString()).toString();
     const escrowContract = await deploy(signer, arbiter, beneficiary, value);
-
-
     const escrow = {
       address: escrowContract.address,
       arbiter,
       beneficiary,
-      value: value.toString(),
+      value,
       handleApprove: async () => {
         escrowContract.on('Approved', () => {
           document.getElementById(escrowContract.address).className =
@@ -51,6 +64,7 @@ function App() {
     };
 
     setEscrows([...escrows, escrow]);
+    localStorage.setItem('escrows', JSON.stringify([...escrows, escrow]));
   }
 
   return (
@@ -68,8 +82,8 @@ function App() {
         </label>
 
         <label>
-          Deposit Amount (in Wei)
-          <input type="text" id="wei" />
+          Deposit Amount (in Ether)
+          <input type="text" id="Ether" />
         </label>
 
         <div
